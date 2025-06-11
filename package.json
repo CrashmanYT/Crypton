@@ -1,0 +1,20 @@
+{
+  "name": "crypton",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@api/birdeyedotso": "file:.api/apis/birdeyedotso",
+    "@goplus/sdk-node": "^1.1.1",
+    "axios": "^1.9.0",
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0",
+    "technicalindicators": "^3.1.0"
+  }
+}

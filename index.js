@@ -3,10 +3,6 @@ require('dotenv').config();
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const birdeyedotso = require('@api/birdeyedotso');
-
-// Autentikasi SDK di awal
-birdeyedotso.auth(process.env.BIRDEYE_API_KEY);
 
 const client = new Client({
     intents: [
@@ -45,20 +41,26 @@ client.monitoringInterval = null;
 client.monitoredChannelId = null;
 client.lastCheckedTokens = new Set();
 client.checkNewPairs = async function() {
-    if (!this.monitoredChannelId) return;
+    // Pastikan ada channel yang dipantau dan ada nilai minLiquidity
+    if (!this.monitoredChannelId || !this.minLiquidity) return;
+
     try {
-        const axios = require('axios'); // require axios di dalam fungsi
-        console.log(`[${new Date().toLocaleString()}] Mengecek pasangan token baru...`);
+        const axios = require('axios');
+        console.log(`[${new Date().toLocaleString()}] Mengecek pasangan token baru dengan min liq: $${this.minLiquidity}...`);
         const response = await axios.get('https://api.dexscreener.com/latest/dex/search?q=new');
         const pairs = response.data.pairs;
         const channel = await this.channels.fetch(this.monitoredChannelId);
+        
         if (!channel) {
             console.log("Channel pantau tidak ditemukan, mematikan interval.");
             clearInterval(this.monitoringInterval);
             return;
         }
+
         for (const pair of pairs) {
-            if (!this.lastCheckedTokens.has(pair.pairAddress) && pair.liquidity && pair.liquidity.usd > 2000) {
+            // ### PERUBAHAN UTAMA DI SINI ###
+            // Menggunakan `this.minLiquidity` sebagai filter, bukan angka 2000
+            if (!this.lastCheckedTokens.has(pair.pairAddress) && pair.liquidity && pair.liquidity.usd > this.minLiquidity) {
                 const { EmbedBuilder } = require('discord.js');
                 const embed = new EmbedBuilder()
                     .setTitle(`🔔 Token Baru Terdeteksi: ${pair.baseToken.name}`)
@@ -66,11 +68,11 @@ client.checkNewPairs = async function() {
                     .setColor('#00FFFF')
                     .addFields(
                         { name: 'Simbol', value: pair.baseToken.symbol, inline: true },
-                        { name: 'Likuiditas Awal', value: `$${Number(pair.liquidity.usd).toLocaleString()}`, inline: true },
+                        { name: 'Likuiditas Awal', value: `$${Number(pair.liquidity.usd).toLocaleString('en-US')}`, inline: true },
                         { name: 'Jaringan', value: pair.chainId, inline: true }
                     )
                     .setFooter({ text: 'Bot Naga Koin | Pantau Aktif' });
-                await channel.send({ content: `🚨 **Peringatan Token Baru!** 🚨`, embeds: [embed] });
+                await channel.send({ content: `🚨 **Peringatan Token Baru!** (Likuiditas > $${this.minLiquidity.toLocaleString('en-US')}) 🚨`, embeds: [embed] });
                 this.lastCheckedTokens.add(pair.pairAddress);
             }
         }

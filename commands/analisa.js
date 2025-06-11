@@ -1,7 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
 const { GoPlus, ErrorCode } = require('@goplus/sdk-node');
-const birdeyedotso = require('@api/birdeyedotso');
 const { RSI, SMA } = require('technicalindicators');
 
 module.exports = {

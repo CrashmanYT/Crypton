@@ -1,3 +1,5 @@
+// commands/waspada.js (Versi dengan Perbaikan Error Handling)
+
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { GoPlus, ErrorCode } = require('@goplus/sdk-node');
 
@@ -13,7 +15,7 @@ module.exports = {
                 { name: 'Base', value: 'base_mainnet' }
             )),
     async execute(interaction) {
-        await interaction.deferReply();
+        await interaction.deferReply({ ephemeral: true });
         const tokenAddress = interaction.options.getString('alamat');
         const chainIdMap = { 'solana_mainnet': 'solana', 'eth_mainnet': '1', 'base_mainnet': '8453' };
         const chainId = chainIdMap[interaction.options.getString('jaringan')];
@@ -22,15 +24,20 @@ module.exports = {
             const response = await GoPlus.tokenSecurity(chainId, [tokenAddress], 30);
 
             if (response.code !== ErrorCode.SUCCESS) {
-                await interaction.editReply(`❌ Terjadi kesalahan: ${response.message}`);
-                return;
+                return await interaction.editReply({ content: `❌ Terjadi kesalahan saat memanggil API Keamanan: ${response.message}` });
+            }
+
+            // ### PERBAIKAN UTAMA DI SINI ###
+            // Cek jika objek result itu sendiri null atau tidak ada.
+            if (!response.result) {
+                return await interaction.editReply({ content: `❌ Data keamanan untuk token \`${tokenAddress}\` tidak ditemukan di GoPlus.` });
             }
 
             const data = response.result[tokenAddress.toLowerCase()];
 
+            // Cek sekali lagi jika data spesifik untuk token tersebut tidak ada di dalam result.
             if (!data) {
-                await interaction.editReply('❌ Tidak dapat menemukan data keamanan untuk token ini.');
-                return;
+                return await interaction.editReply({ content: `❌ Data keamanan untuk token \`${tokenAddress}\` tidak ditemukan di GoPlus.` });
             }
 
             let description = '';
@@ -50,12 +57,13 @@ module.exports = {
                 .setTitle(`🛡️ Laporan Keamanan: ${data.token_name} (${data.token_symbol})`)
                 .setDescription(description)
                 .setColor(data.is_honeypot === '1' ? '#E74C3C' : '#2ECC71')
-                .setFooter({ text: 'Analisis oleh GoPlus Security | Bot Naga Koin 🐉' });
+                .setFooter({ text: 'Analisis oleh GoPlus Security | Bot Crypton' });
 
             await interaction.editReply({ embeds: [embed] });
+
         } catch (error) {
             console.error("Error pada /waspada:", error);
-            await interaction.editReply("Terjadi kesalahan saat memproses permintaan keamanan.");
+            await interaction.editReply({ content: "Terjadi kesalahan internal saat memproses permintaan keamanan." });
         }
     },
 };

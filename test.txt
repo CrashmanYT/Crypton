@@ -1,0 +1,92 @@
+ FAIL  __tests__/services/taCalculatot.test.js
+  ● taCalculator Service › should calculate all TA indicators correctly with sufficient data                                    
+
+    expect(received).toBeCloseTo(expected)
+
+    Expected: 80.59
+    Received: 71.13
+
+    Expected precision:    2
+    Expected difference: < 0.005
+    Received difference:   9.460000000000008
+
+      29 |         expect(result.bollingerBands).toBeDefined(); 
+      30 |
+    > 31 |         expect(Number(result.rsi)).toBeCloseTo(80.59);
+         |                                    ^
+      32 |         expect(result.sma20).toBeCloseTo(46.68);     
+      33 |
+      34 |         expect(result.macd).toHaveProperty('MACD');  
+
+      at Object.toBeCloseTo (__tests__/services/taCalculatot.test.js:31:36)
+
+ PASS  __tests__/services/apiClient.test.js
+  ● Console
+
+    console.error
+      [API Client] Gagal mengambil data Dexscreener untuk any-address: Network Error
+
+      19 |             return { success: true, data: pair };    
+      20 |         } catch (error) {
+    > 21 |             console.error(`[API Client] Gagal mengambil data Dexscreener untuk ${tokenAddress}:`, error.message);    
+         |                     ^
+      22 |             return { success: false, error: 'Gagal terhubung ke API DexScreener.' };
+      23 |         }
+      24 |     },
+
+      at Object.error [as getDexScreenerData] (services/apiClient.js:21:21)
+      at Object.<anonymous> (__tests__/services/apiClient.test.js:39:22)
+
+ FAIL  __tests__/services/database.test.js
+  ● Test suite failed to run
+                                                                
+    RangeError: Maximum call stack size exceeded
+
+      4 | // Ini adalah cara yang benar, tanpa memerlukan library tambahan.
+      5 | jest.mock('better-sqlite3', () => {
+    > 6 |     const Database = require('better-sqlite3');       
+        |                      ^
+      7 |     // Selalu kembalikan database in-memory untuk pengujian
+      8 |     return jest.fn().mockImplementation(() => new Database(':memory:'));
+      9 |   });
+
+      at Runtime.requireModuleOrMock (node_modules/jest-runtime/build/index.js:969:53)
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+      at require (__tests__/services/database.test.js:6:22)     
+
+Test Suites: 2 failed, 1 passed, 3 total                        
+Tests:       1 failed, 7 passed, 8 total                        
+Snapshots:   0 total
+Time:        0.561 s, estimated 1 s
+Ran all test suites.

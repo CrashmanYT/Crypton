@@ -1,6 +1,7 @@
-// commands/pantau-mulai.js (Versi dengan Perbaikan Error Handling)
+// commands/pantau-mulai.js (Versi Refactored & Diperbaiki)
 
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
+const scheduler = require('../services/scheduler.js'); // Import scheduler
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -19,18 +20,14 @@ module.exports = {
     async execute(interaction) {
         // Lakukan semua pengecekan di awal
         if (!interaction.member.permissions.has('Administrator')) {
-            // Jika bukan admin, balas dan hentikan.
             return await interaction.reply({ content: '❌ Perintah ini hanya untuk Administrator.', ephemeral: true });
         }
 
         if (interaction.client.monitoringInterval) {
-            // Jika pemantauan sudah aktif, balas dan hentikan.
             return await interaction.reply({ content: '❌ Pemantauan sudah aktif. Gunakan /pantau-berhenti terlebih dahulu.', ephemeral: true });
         }
         
-        // Jika semua pengecekan lolos, baru lanjutkan ke logika utama.
-        // Karena logika ini mungkin butuh waktu, kita gunakan deferReply().
-        await interaction.deferReply();
+        await interaction.deferReply({ ephemeral: true });
 
         const channel = interaction.options.getChannel('channel');
         const minLiquidity = interaction.options.getInteger('min_liquidity') || 2000;
@@ -39,11 +36,15 @@ module.exports = {
         interaction.client.monitoredChannelId = channel.id;
         interaction.client.minLiquidity = minLiquidity;
         
-        // Jalankan pemantauan dengan interval
-        interaction.client.checkNewPairs();
-        interaction.client.monitoringInterval = setInterval(() => interaction.client.checkNewPairs(), 60000 * 5); // Cek setiap 5 menit
+        // Jalankan pemantauan pertama kali secara langsung
+        scheduler.checkNewPairs(interaction.client);
+
+        // ### PERBAIKAN UTAMA DI SINI ###
+        // Memulai interval dan menyimpan ID-nya ke client object
+        interaction.client.monitoringInterval = setInterval(() => scheduler.checkNewPairs(interaction.client), 300000); // Cek setiap 5 menit
         
-        // Gunakan editReply() karena kita sudah menggunakan deferReply() sebelumnya.
+        console.log('[Scheduler] Pemantauan token baru telah dimulai.');
+        
         await interaction.editReply(`✅ Pemantauan token baru telah dimulai di channel ${channel} dengan minimum likuiditas **$${minLiquidity.toLocaleString('en-US')}**.`);
     },
 };

@@ -1,7 +1,8 @@
 // database.js
 const Database = require('better-sqlite3');
 
-// Membuat atau menghubungkan ke file database bernama 'naga_koin.db'
+// Membuat atau menghubungkan ke file database.
+// Untuk pengujian, ini akan menjadi database in-memory.
 const db = new Database('naga_koin.db');
 
 // Fungsi untuk inisialisasi tabel saat bot pertama kali dijalankan
@@ -24,34 +25,35 @@ function setupDatabase() {
     console.log('[DB] Tabel "alerts" siap digunakan.');
 }
 
-// Menyiapkan statement yang sering digunakan untuk performa lebih baik
-const insertAlertStmt = db.prepare('INSERT INTO alerts (userId, guildId, guildName, tokenAddress, tokenSymbol, priceAbove, priceBelow, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-const getAlertsByUserStmt = db.prepare('SELECT * FROM alerts WHERE userId = ? ORDER BY createdAt DESC');
-const getAlertByIdAndUserStmt = db.prepare('SELECT * FROM alerts WHERE id = ? AND userId = ?');
-const deleteAlertStmt = db.prepare('DELETE FROM alerts WHERE id = ?');
-const getAllAlertsStmt = db.prepare('SELECT * FROM alerts');
-
 // Kumpulan fungsi untuk berinteraksi dengan tabel alerts
+// PERBAIKAN: Menyiapkan statement di dalam setiap fungsi untuk memastikan
+// tabel sudah ada sebelum statement di-prepare.
 const alertManager = {
     addAlert: (userId, guildId, guildName, tokenAddress, tokenSymbol, priceAbove, priceBelow) => {
+        const stmt = db.prepare('INSERT INTO alerts (userId, guildId, guildName, tokenAddress, tokenSymbol, priceAbove, priceBelow, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         const createdAt = Math.floor(Date.now() / 1000);
-        return insertAlertStmt.run(userId, guildId, guildName, tokenAddress, tokenSymbol, priceAbove, priceBelow, createdAt);
+        return stmt.run(userId, guildId, guildName, tokenAddress, tokenSymbol, priceAbove, priceBelow, createdAt);
     },
     getAlertsByUser: (userId) => {
-        return getAlertsByUserStmt.all(userId);
+        const stmt = db.prepare('SELECT * FROM alerts WHERE userId = ? ORDER BY createdAt DESC');
+        return stmt.all(userId);
     },
     getAlertByIdAndUser: (id, userId) => {
-        return getAlertByIdAndUserStmt.get(id, userId);
+        const stmt = db.prepare('SELECT * FROM alerts WHERE id = ? AND userId = ?');
+        return stmt.get(id, userId);
     },
     removeAlert: (id) => {
-        return deleteAlertStmt.run(id);
+        const stmt = db.prepare('DELETE FROM alerts WHERE id = ?');
+        return stmt.run(id);
     },
     getAllAlerts: () => {
-        return getAllAlertsStmt.all();
+        const stmt = db.prepare('SELECT * FROM alerts');
+        return stmt.all();
     }
 };
 
 module.exports = {
+    db, // Ekspor db jika diperlukan di tempat lain
     setupDatabase,
     alertManager
 };

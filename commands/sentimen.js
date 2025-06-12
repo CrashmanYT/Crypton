@@ -1,7 +1,8 @@
 // commands/sentimen.js (v2.0 - Advanced Social Sentiment Analysis)
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const axios = require('axios');
+const apiClient = require('../services/apiClient.js');
+
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,36 +17,21 @@ module.exports = {
         const symbol = interaction.options.getString('simbol').toUpperCase();
 
         try {
-            // LANGKAH 1: Validasi Simbol dan Dapatkan Nama Lengkap dari Dexscreener
-            let tokenName = symbol; // Default ke simbol jika tidak ditemukan
-            try {
-                const dexscreenerRes = await axios.get(`https://api.dexscreener.com/latest/dex/search?q=${symbol}`);
-                const pair = dexscreenerRes.data.pairs.find(p => p.baseToken.symbol === symbol);
-                if (pair) {
-                    tokenName = pair.baseToken.name;
-                }
-            } catch (e) {
-                console.log(`Tidak dapat memvalidasi simbol ${symbol} di Dexscreener, melanjutkan dengan simbol saja.`);
-            }
+            const tokenName = await apiClient.getTokenName(symbol);
 
-            // LANGKAH 2: Panggil API Stocktwits dan Reddit secara paralel
-            const stocktwitsSymbol = `${symbol}.X`;
-            const stocktwitsUrl = `https://api.stocktwits.com/api/2/streams/symbol/${stocktwitsSymbol}.json`;
-            // Gabungkan pencarian untuk simbol ($WIF) dan nama (dogwifhat) di Reddit
+            // LANGKAH 2: Panggil API secara paralel
             const redditQuery = encodeURIComponent(`"${symbol}" OR "$${symbol}" OR "${tokenName}"`);
-            const redditUrl = `https://www.reddit.com/r/solana+CryptoMoonShots+altcoin/search.json?q=${redditQuery}&sort=new&limit=100`;
-
-            const [stocktwitsResult, redditResult] = await Promise.allSettled([
-                axios.get(stocktwitsUrl),
-                axios.get(redditUrl, { headers: { 'User-Agent': 'NagaKoinBot/1.0' } }) // Reddit butuh User-Agent
+            const [stocktwitsResult, redditResult] = await Promise.all([
+                apiClient.getStocktwitsData(`${symbol}.X`),
+                apiClient.getRedditData(redditQuery)
             ]);
-
+            
             // LANGKAH 3: Proses Hasil dari Setiap API
             let stocktwitsData = { bullish: 0, bearish: 0, totalMessages: 0, influenceScore: 0, url: null };
-            if (stocktwitsResult.status === 'fulfilled' && stocktwitsResult.value.data.messages) {
-                const messages = stocktwitsResult.value.data.messages;
+            if (stocktwitsResult.success && stocktwitsResult.data.messages) {
+                const messages = stocktwitsResult.data.messages;
                 stocktwitsData.totalMessages = messages.length;
-                stocktwitsData.url = stocktwitsResult.value.data.symbol?.stocktwits_symbol_url || null;
+                stocktwitsData.url = stocktwitsResult.data.symbol?.stocktwits_symbol_url || null;
                 for (const msg of messages) {
                     if (msg.entities.sentiment?.basic === 'Bullish') stocktwitsData.bullish++;
                     if (msg.entities.sentiment?.basic === 'Bearish') stocktwitsData.bearish++;
@@ -54,15 +40,15 @@ module.exports = {
             }
 
             let redditData = { mentions: 0, activeUsers: 0 };
-            if (redditResult.status === 'fulfilled' && redditResult.value.data.data.children) {
-                const postsAndComments = redditResult.value.data.data.children;
+            if (redditResult.success && redditResult.data.data.children) {
+                const postsAndComments = redditResult.data.data.children;
                 redditData.mentions = postsAndComments.length;
                 const authors = new Set(postsAndComments.map(p => p.data.author));
                 redditData.activeUsers = authors.size;
             }
 
             // Jika kedua API gagal
-            if (stocktwitsResult.status === 'rejected' && redditResult.status === 'rejected') {
+            if (!stocktwitsResult.success && !redditResult.success) {
                 return await interaction.editReply(`❌ Gagal mengambil data dari Stocktwits dan Reddit untuk **${symbol}**.`);
             }
 
@@ -76,7 +62,7 @@ module.exports = {
             } else if (sentimentScore > 60 || redditData.mentions > 20) {
                 hypeMeter = 'Bullish ✅';
             } else if (sentimentScore < 40 || (stocktwitsData.totalMessages > 10 && redditData.mentions < 5)) {
-                hypeMeter = 'Bearish �';
+                hypeMeter = 'Bearish 📉';
             } else if (stocktwitsData.totalMessages === 0 && redditData.mentions === 0) {
                 hypeMeter = 'Tidak Ada Aktivitas 💤';
             }

@@ -1,14 +1,9 @@
 // database.js
 const Database = require('better-sqlite3');
 
-// Membuat atau menghubungkan ke file database.
-// Untuk pengujian, ini akan menjadi database in-memory.
 const db = new Database('naga_koin.db');
 
-// Fungsi untuk inisialisasi tabel saat bot pertama kali dijalankan
 function setupDatabase() {
-    // Tabel untuk menyimpan semua price alerts
-    // Menambahkan guildName untuk referensi di DM
     db.exec(`
         CREATE TABLE IF NOT EXISTS alerts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,12 +17,22 @@ function setupDatabase() {
             createdAt INTEGER NOT NULL
         );
     `);
-    console.log('[DB] Tabel "alerts" siap digunakan.');
+    
+    // --- TAMBAHKAN SKEMA BARU DI SINI ---
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS pro_traders (
+            walletAddress TEXT PRIMARY KEY,
+            network TEXT NOT NULL,
+            pnl REAL,
+            winrate REAL,
+            lastChecked INTEGER NOT NULL,
+            note TEXT
+        );
+    `);
+
+    console.log('[DB] Tabel "alerts" dan "pro_traders" siap digunakan.');
 }
 
-// Kumpulan fungsi untuk berinteraksi dengan tabel alerts
-// PERBAIKAN: Menyiapkan statement di dalam setiap fungsi untuk memastikan
-// tabel sudah ada sebelum statement di-prepare.
 const alertManager = {
     addAlert: (userId, guildId, guildName, tokenAddress, tokenSymbol, priceAbove, priceBelow) => {
         const stmt = db.prepare('INSERT INTO alerts (userId, guildId, guildName, tokenAddress, tokenSymbol, priceAbove, priceBelow, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
@@ -52,8 +57,29 @@ const alertManager = {
     }
 };
 
+// --- TAMBAHKAN MANAGER BARU UNTUK PRO TRADER ---
+const proTraderManager = {
+    // Fungsi untuk menambah atau memperbarui data trader
+    upsertTrader: (walletAddress, network, pnl, winrate, note = '') => {
+        const stmt = db.prepare(`
+            INSERT INTO pro_traders (walletAddress, network, pnl, winrate, lastChecked, note)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(walletAddress) DO UPDATE SET
+                pnl = excluded.pnl,
+                winrate = excluded.winrate,
+                lastChecked = excluded.lastChecked
+        `);
+        return stmt.run(walletAddress, network, pnl, winrate, Math.floor(Date.now() / 1000), note);
+    },
+    getTraders: (network) => {
+        const stmt = db.prepare('SELECT * FROM pro_traders WHERE network = ? ORDER BY pnl DESC');
+        return stmt.all(network);
+    }
+};
+
 module.exports = {
-    db, // Ekspor db jika diperlukan di tempat lain
+    db,
     setupDatabase,
-    alertManager
+    alertManager,
+    proTraderManager // Ekspor manager baru
 };

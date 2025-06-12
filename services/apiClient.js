@@ -35,9 +35,13 @@ const apiClient = {
             const now = new Date();
             let timeFrom;
             switch (timeframe) {
-                case '4H': timeFrom = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)); break; // 7 hari data
-                case '1D': timeFrom = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000)); break; // 60 hari data
-                default: timeFrom = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000)); break; // 3 hari data
+                case '5m': timeFrom = new Date(now.getTime() - (6 * 60 * 60 * 1000)); break;       // Ambil data 6 jam terakhir
+                case '15m': timeFrom = new Date(now.getTime() - (12 * 60 * 60 * 1000)); break;    // Ambil data 12 jam terakhir
+                case '30m': timeFrom = new Date(now.getTime() - (24 * 60 * 60 * 1000)); break;    // Ambil data 1 hari terakhir
+                case '1H': timeFrom = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000)); break; // Ambil data 3 hari terakhir
+                case '4H': timeFrom = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)); break; // Ambil data 7 hari terakhir
+                case '1D': timeFrom = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000)); break;// Ambil data 60 hari terakhir
+                default: timeFrom = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000)); break; // Default 3 hari
             }
             const time_from_unix = Math.floor(timeFrom.getTime() / 1000);
             const time_to_unix = Math.floor(now.getTime() / 1000);
@@ -99,6 +103,54 @@ const apiClient = {
             return symbol;
         }
     },
+
+    /**
+     * Mengambil daftar transaksi terbaru untuk sebuah pasangan token.
+     * @param {string} chainId Nama jaringan (misal: 'solana', 'base').
+     * @param {string} pairAddress Alamat pasangan (pair).
+     * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+     */
+    getRecentTrades: async (chainId, pairAddress) => {
+        try {
+            // PERBAIKAN: Menggunakan chainId dinamis untuk membangun URL yang benar.
+            const response = await axios.get(`https://api.dexscreener.com/latest/dex/trades/${chainId}/${pairAddress}`);
+            if (response.data.pairs && response.data.pairs.length > 0) {
+                return { success: true, data: response.data.pairs[0].trades };
+            }
+            return { success: false, error: 'Tidak ada data transaksi yang ditemukan.' };
+        } catch (error) {
+            const errorMessage = error.response?.data?.error?.message || error.message;
+            console.log(error)
+            console.error(`[API Client] Gagal mengambil data trades:`, errorMessage);
+            return { success: false, error: `Gagal mengambil data trades dari DexScreener: ${errorMessage}` };
+        }
+    },
+
+    // --- FUNGSI BARU UNTUK MORALIS ---
+    /**
+     * Mengambil data portofolio detail dari sebuah dompet menggunakan Moralis.
+     * @param {string} walletAddress Alamat dompet.
+     * @param {string} network Jaringan (misal: 'solana').
+     * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+     */
+    getWalletPortfolio: async (walletAddress, network) => {
+        try {
+            const response = await axios.get(`https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/portfolio`, {
+                params: {
+                    chain: network,
+                },
+                headers: {
+                    'accept': 'application/json',
+                    'X-API-Key': process.env.MORALIS_API_KEY
+                }
+            });
+            return { success: true, data: response.data };
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.message;
+            console.error(`[API Client] Gagal mengambil data portfolio Moralis:`, errorMessage);
+            return { success: false, error: `Gagal mengambil data portfolio: ${errorMessage}` };
+        }
+    }
 };
 
 module.exports = apiClient;

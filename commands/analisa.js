@@ -18,6 +18,9 @@ module.exports = {
                 .setDescription('Pilih timeframe untuk Analisa Teknikal. Default: 1 Jam.')
                 .setRequired(false)
                 .addChoices(
+                    { name: '5 Menit', value: '5m' },
+                    { name: '15 Menit', value: '15m' },
+                    { name: '30 Menit', value: '30m' },
                     { name: '1 Jam', value: '1H' },
                     { name: '4 Jam', value: '4H' },
                     { name: '1 Hari', value: '1D' }
